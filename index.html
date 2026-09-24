@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CUT&amp;Tag 数据处理与分析教程 · 中文翻译</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.75; color: #222; max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 4rem; background: #fff; }
+  h1 { font-size: 1.85rem; border-bottom: 2px solid #2c6; padding-bottom: .4rem; }
+  h2 { font-size: 1.4rem; margin-top: 2.4rem; border-bottom: 1px solid #ddd; padding-bottom: .25rem; color: #065f46; }
+  h3 { font-size: 1.15rem; margin-top: 1.6rem; color: #333; }
+  h4 { font-size: 1.02rem; margin-top: 1.3rem; color: #444; }
+  code { background: #f5f5f5; padding: .12em .35em; border-radius: 4px; font-size: .9em; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; }
+  pre { background: #f7f7f7; border: 1px solid #e3e3e3; border-radius: 6px; padding: 1rem 1.1rem; overflow-x: auto; line-height: 1.5; font-size: .86em; }
+  pre code { background: none; padding: 0; }
+  pre .co { color: #6a737d; }
+  img { max-width: 100%; height: auto; border: 1px solid #eee; border-radius: 6px; margin: .6rem 0; }
+  blockquote { border-left: 4px solid #2c6; margin: 1rem 0; padding: .3rem 1rem; color: #555; background: #f2faf7; }
+  .meta { color: #666; font-size: .92em; margin: .4rem 0 1.5rem; }
+  table { border-collapse: collapse; margin: 1rem 0; font-size: .9em; }
+  th, td { border: 1px solid #ccc; padding: .3rem .6rem; text-align: left; }
+  a { color: #065f46; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .en { color: #999; font-size: .85em; }
+  .note { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 6px; padding: .6rem 1rem; margin: 1rem 0; }
+  .figcap { text-align: center; color: #555; font-size: .9em; margin: .3rem 0 1.2rem; }
+  hr { border: none; border-top: 1px solid #eee; margin: 2rem 0; }
+  ul, ol { padding-left: 1.6rem; }
+</style>
+</head>
+<body>
+
+<h1>CUT&amp;Tag 数据处理与分析教程 <span class="en">(CUT&amp;Tag Data Processing and Analysis Tutorial)</span></h1>
+
+<div class="meta">
+  <p><strong>作者：</strong>Ye Zheng, Kami Ahmad, Steven Henikoff</p>
+  <p><strong>最后更新：</strong>2021-02-01　|　<strong>预计用时：</strong>60–120 分钟</p>
+  <p><strong>来源：</strong><a href="https://yezhengstat.github.io/CUTTag_tutorial/">https://yezhengstat.github.io/CUTTag_tutorial/</a>（本页面为其完整中文翻译）</p>
+</div>
+
+<div class="note">说明：本教程原文由 workflowr 生成，页面前部的「Checks / Past versions / Git 状态」等可复现性检查元信息属于 workflowr 的样板内容，此处略去，仅保留教程正文的完整翻译。所有代码、命令、函数名与参数名均保持原文，未做改动，以保证可复现。</div>
+
+<hr>
+
+<h2>I. 引言 <span class="en">Introduction</span></h2>
+
+<h3>1.1 CUT&amp;Tag 概述 <span class="en">Overview of CUT&amp;Tag</span></h3>
+
+<p>真核细胞核内发生在 DNA 上的所有动态过程，都处于由核小体及其修饰、转录因子和染色质相关复合物所构成的染色质环境中。各种染色质特征标记着激活性和抑制性转录调控元件以及染色质结构域，这些特征因细胞类型而异，并在发育过程中发生变化。</p>
+
+<p>传统上，染色质特征的全基因组定位一直使用染色质免疫沉淀（ChIP）来完成：将染色质交联并溶解，再用针对目标蛋白或修饰的抗体去免疫沉淀结合的 DNA（图 1a）。自 35 年前首次报道以来，ChIP 最常见的操作方式几乎没有改变，并且仍然饱受信噪比问题和假象的困扰。另一种染色质分析策略是<strong>原位酶锚定（enzyme tethering in situ）</strong>：由抗体或融合蛋白靶向目标染色质蛋白或修饰，随后标记或切割其下方的 DNA。过去二十年间，一系列酶锚定方法相继问世。<strong>CUT&amp;Tag（Cleavage Under Targets &amp; Tagmentation，靶下切割与片段化）</strong>是一种使用蛋白 A-Tn5（pA-Tn5）转座酶融合蛋白的锚定方法（图 1b）。在 CUT&amp;Tag 中，将通透化处理的细胞或细胞核与针对特定染色质蛋白的抗体孵育，随后将装载了 mosaic-end 接头的 pA-Tn5 依次锚定到抗体结合位点。加入镁离子激活转座酶后，接头被整合到附近的 DNA 中，再经扩增生成测序文库。由于 pA-Tn5 锚定后对样品进行严格洗涤，加上接头整合的高效性，抗体锚定 Tn5 类方法获得了很高的灵敏度。相对于 ChIP-seq 改善的信噪比，意味着定位染色质特征所需的测序量减少了一个数量级，从而可以通过对文库进行条形码 PCR，将多个样品（通常最多 90 个）混合后在 Illumina NGS 测序仪上进行双端测序。</p>
+
+<img src="figures/ChIPseqCUTTag.png" alt="图1">
+<p class="figcap"><strong>图 1. 免疫沉淀与抗体靶向染色质分析策略的区别。</strong><strong>A.</strong> ChIP-seq 实验流程。<strong>B.</strong> CUT&amp;Tag 实验流程。细胞和细胞核以灰色表示，染色质为红色核小体，特定染色质蛋白为绿色。</p>
+
+<h3>1.2 目标 <span class="en">Objectives</span></h3>
+
+<p>本教程用于处理和分析遵循 <a href="https://www.protocols.io/view/bench-top-cut-amp-tag-bcuhiwt6/abstract">Bench top CUT&amp;Tag V.3 方案</a>得到的 CUT&amp;Tag 数据。教程所用示例数据是人淋巴瘤 K562 细胞系中组蛋白修饰的分析，但本教程普遍适用于任何染色质蛋白，包括转录因子、RNA 聚合酶 II 和表位标签蛋白等。</p>
+
+<h3>1.3 CUT&amp;Tag 数据处理与分析流程概览 <span class="en">CUT&amp;Tag data processing and analysis outline</span></h3>
+
+<img src="figures/CUTTag_Tuto_Diagram.png" alt="图2">
+<p class="figcap"><strong>图 2. CUT&amp;Tag 数据处理与分析流程。</strong></p>
+
+<h3>1.4 环境要求 <span class="en">Requirements</span></h3>
+
+<ul>
+  <li>Linux 系统</li>
+  <li>R（版本 ≥ 3.6）
+    <ul>
+      <li>dplyr</li>
+      <li>stringr</li>
+      <li>ggplot2</li>
+      <li>viridis</li>
+      <li>GenomicRanges</li>
+      <li>chromVAR</li>
+      <li>DESeq2</li>
+      <li>ggpubr</li>
+      <li>corrplot</li>
+      <li>ChIPseqSpikeInFree（可选）</li>
+    </ul>
+  </li>
+</ul>
+
+<pre><code>library(dplyr)
+library(stringr)
+library(ggplot2)
+library(viridis)
+library(GenomicRanges)
+library(chromVAR) ## 用于 FRiP 分析和差异分析
+library(DESeq2) ## 用于差异分析部分
+library(ggpubr) ## 用于自定义图形
+library(corrplot) ## 用于相关性图</code></pre>
+
+<ul>
+  <li>FastQC（版本 ≥ 0.11.9）</li>
+  <li>Bowtie2（版本 ≥ 2.3.4.3）</li>
+  <li>samtools（版本 ≥ 1.10）</li>
+  <li>bedtools（版本 ≥ 2.29.1）</li>
+  <li>Picard（版本 ≥ 2.18.29）</li>
+  <li>SEACR（版本 ≥ 1.3）</li>
+  <li>deepTools（版本 ≥ 2.0）</li>
+</ul>
+
+<h3>1.5 数据下载 <span class="en">Data Downloading</span></h3>
+
+<p>本教程使用来自 Kaya-Okur et al. (2020) 的数据，可从 <a href="https://www.ncbi.nlm.nih.gov/geo/">GEO</a> 下载。相应的 SRA 条目如下所示。</p>
+
+<p>从 GEO 下载 SRA 序列的选项：</p>
+<ol>
+  <li>使用 <a href="https://www.ncbi.nlm.nih.gov/sra/docs/sradownload/">SRA Toolkit</a></li>
+  <li>通过 <a href="https://www.ebi.ac.uk/ena/browser/view">European Nucleotide Archive（ENA）</a> 下载。本教程以该方式作为示例。</li>
+</ol>
+
+<p>首先，我们需要指定项目路径。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+projPath="/path/to/project/where/data/and/results/are/saved"</code></pre>
+
+<ul>
+  <li><strong>H3K27me3：</strong>
+    <ul>
+      <li>SH_Hs_K27m3_NX_0918（重复 1）：GEO 编号 GSE145187，SRA 条目 SRX8754646</li>
+      <li>SH_Hs_K27m3_Xpc_0107（重复 2）：GEO 编号 GSE145187，SRA 条目 SRX7713678</li>
+    </ul>
+  </li>
+  <li><strong>H3K4me3：</strong>
+    <ul>
+      <li>SH_Hs_K4m3_NX_0918（重复 1）：GEO 编号 GSE145187，SRA 条目 SRX7713692</li>
+      <li>SH_Hs_K4m3_Xpc_0107（重复 2）：GEO 编号 GSE145187，SRA 条目 SRX7713696</li>
+    </ul>
+  </li>
+  <li><strong>IgG：</strong>
+    <ul>
+      <li>SH_Hs_IgG_1x_0924（重复 1）：GEO 编号 GSE145187，SRA 条目 SRX8468909</li>
+      <li>SH_Hs_IgG_20181224（重复 2）：GEO 编号 GSM3680227，SRA 条目 SRX5545346</li>
+    </ul>
+  </li>
+</ul>
+
+<p>以 SH_Hs_IgG_20181224 为例：</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+wget -O $projPath/data/IgG_rep2/IgG_rep2_R1_001.fastq.gz ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR875/001/SRR8754611/SRR8754611_1.fastq.gz
+
+wget -O $projPath/data/IgG_rep2/IgG_rep2_R2_001.fastq.gz ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR875/001/SRR8754611/SRR8754611_2.fastq.gz
+
+wget -O $projPath/data/IgG_rep2/IgG_rep2_R1_002.fastq.gz ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR875/002/SRR8754612/SRR8754612_1.fastq.gz
+
+wget -O $projPath/data/IgG_rep2/IgG_rep2_R2_002.fastq.gz ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR875/002/SRR8754612/SRR8754612_2.fastq.gz</code></pre>
+
+<h2>II. 数据预处理 <span class="en">Data Pre-processing</span></h2>
+
+<h3>2.1 使用 FastQC 进行质量控制（可选）<span class="en">Quality Control using FastQC [Optional]</span></h3>
+
+<p>此步骤并非必需。如果用户是自己产生的数据，且 FastQC 是其课题组常规检查流程之一，我们在此提供该步骤作为排障说明。</p>
+
+<h4>2.2.1 获取 FastQC</h4>
+
+<pre><code><span class="co">##== linux command ==##</span>
+mkdir -p $projPath/tools
+wget -P $projPath/tools https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v0.11.9.zip
+cd $projPath/tools
+unzip fastqc_v0.11.9.zip</code></pre>
+
+<h4>2.2.2 运行 FastQC 进行质量检查</h4>
+
+<pre><code><span class="co">##== linux command ==##</span>
+mkdir -p ${projPath}/fastqFileQC/${histName}
+
+$projPath/tools/FastQC/fastqc -o ${projPath}/fastqFileQC/${histName} -f fastq ${projPath}/fastq/${histName}_R1.fastq.gz
+$projPath/tools/FastQC/fastqc -o ${projPath}/fastqFileQC/${histName} -f fastq ${projPath}/fastq/${histName}_R2.fastq.gz</code></pre>
+
+<h4>2.2.3 解读质量检查结果</h4>
+
+<p>质量检查参考：<a href="https://www.bioinformatics.babraham.ac.uk/projects/fastqc/bad_sequence_fastqc.html">https://www.bioinformatics.babraham.ac.uk/projects/fastqc/bad_sequence_fastqc.html</a></p>
+
+<img src="figures/R1_sequenceContent.png" alt="图3">
+<p class="figcap"><strong>图 3. 每条碱基的序列组成（Per base sequence content）未通过 FastQC 质量检查。</strong></p>
+
+<p><strong>读段开头的序列组成不一致是 CUT&amp;Tag 读段的常见现象。「Per base sequence content」检查未通过并不意味着你的数据有问题。</strong></p>
+
+<ul>
+  <li>这可能由 Tn5 的偏好性造成。</li>
+  <li>你可能观察到的是长度分布中呈锯齿状（sawtooth）的 10-bp 周期性。如果是这样，这是正常现象，不会影响比对或峰识别。无论如何，我们都不建议做修剪（trimming），因为下面列出的 bowtie2 参数无需修剪即可给出准确的比对信息。</li>
+</ul>
+
+<h3>2.2 必要时合并技术重复/不同泳道（可选）<span class="en">Merge technical replicates/lanes if needed [Optional]</span></h3>
+
+<p>有时，为提高效率，样品常被分到多个泳道（lane）上测序，可在比对前合并。如果你想检查同一样品不同泳道测序之间的可重复性，可以跳过此步骤，分别比对每个测序文件（fastq 文件）。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+histName="K27me3_rep1"
+
+mkdir -p ${projPath}/fastq
+cat ${projPath}/data/${histName}/*_R1_*.fastq.gz &gt;${projPath}/fastq/${histName}_R1.fastq.gz
+cat ${projPath}/data/${histName}/*_R2_*.fastq.gz &gt;${projPath}/fastq/${histName}_R2.fastq.gz</code></pre>
+
+<h2>III. 比对 <span class="en">Alignment</span></h2>
+
+<h3>3.1 Bowtie2 比对（必需）<span class="en">Bowtie2 alignment [required]</span></h3>
+
+<p>带有 Tn5 接头和条形码 PCR 引物的 CUT&amp;Tag 插入片段文库结构如下所示：</p>
+
+<img src="figures/BarcodedCnTLibrary.png" alt="图4">
+<p class="figcap"><strong>图 4. 带有接头序列的 CUT&amp;Tag 插入片段文库。</strong></p>
+
+<p>我们的标准流程是，在单个 HiSeq 2500 流动槽上对最多 90 个混合样品进行单索引 25×25 双端 Illumina 测序，每个样品有唯一的 PCR 引物条形码。调整每个文库的量以提供约 500 万条双端读段，这对于使用特异且高产率抗体分析丰度较高的染色质特征而言，能提供高质量的结果。丰度较低的特征通常需要更少的读段，而质量较差的抗体可能需要更多读段才能生成稳健的染色质图谱。关于 CUT&amp;Tag 特征召回率与测序深度的详细讨论已发表（Kaya-Okur et al 2020）。</p>
+
+<h4>3.1.1 比对到 HG38</h4>
+
+<pre><code><span class="co">##== linux command ==##</span>
+cores=8
+ref="/path/to/bowtie2Index/hg38"
+
+mkdir -p ${projPath}/alignment/sam/bowtie2_summary
+mkdir -p ${projPath}/alignment/bam
+mkdir -p ${projPath}/alignment/bed
+mkdir -p ${projPath}/alignment/bedgraph
+
+<span class="co">## 如需要，先构建 bowtie2 参考基因组索引：
+## bowtie2-build path/to/hg38/fasta/hg38.fa /path/to/bowtie2Index/hg38</span>
+
+bowtie2 --end-to-end --very-sensitive --no-mixed --no-discordant --phred33 -I 10 -X 700 -p ${cores} -x ${ref} -1 ${projPath}/fastq/${histName}_R1.fastq.gz -2 ${projPath}/fastq/${histName}_R2.fastq.gz -S ${projPath}/alignment/sam/${histName}_bowtie2.sam &amp;&gt; ${projPath}/alignment/sam/bowtie2_summary/${histName}_bowtie2.txt</code></pre>
+
+<p>双端读段由 Bowtie2 使用参数 <code>--end-to-end --very-sensitive --no-mixed --no-discordant --phred33 -I 10 -X 700</code> 进行比对，用于比对长度为 10–700 bp 的插入片段。</p>
+
+<p><strong>关键步骤</strong>：对于标准的 25×25 双端测序，无需修剪读段，因为插入片段 &gt;25 bp 的读段中不会包含接头序列。但对于进行更长读长测序的用户，需要用 Cutadapt 修剪读段，并使用 <code>--local --very-sensitive --no-mixed --no-discordant --phred33 -I 10 -X 700</code> 进行比对，以在比对时忽略读段 3′ 端残留的任何接头序列。</p>
+
+<h4>3.1.2 比对到 spike-in 基因组以进行 spike-in 校准（可选/推荐）<span class="en">Alignment to spike-in genome for spike-in calibration [optional/recommended]</span></h4>
+
+<p>本节为<strong>可选</strong>，但<strong>推荐</strong>（取决于你的实验方案）。</p>
+
+<p>E. coli（大肠杆菌）DNA 会随细菌生产的 pA-Tn5 蛋白一起带入，并在反应过程中被非特异性地片段化。比对到 E. coli 基因组的读段占总读段的比例取决于表位靶向 CUT&amp;Tag 的产率，因此取决于所用细胞数量以及该表位在染色质中的丰度。由于向 CUT&amp;Tag 反应中加入的 pATn5 量是恒定的，并随之带入固定量的 E. coli DNA，因此 E. coli 读段可用于在一组实验中归一化表位丰度。更多讨论请见第 V 节。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+spikeInRef="/shared/ngs/illumina/henikoff/Bowtie2/Ecoli"
+chromSize="/fh/fast/gottardo_r/yezheng_working/SupplementaryData/hg38/chromSize/hg38.chrom.size"
+
+<span class="co">## bowtie2-build path/to/Ecoli/fasta/Ecoli.fa /path/to/bowtie2Index/Ecoli</span>
+bowtie2 --end-to-end --very-sensitive --no-mixed --no-discordant --phred33 -I 10 -X 700 -p ${cores} -x ${spikeInRef} -1 ${projPath}/fastq/${histName}_R1.fastq.gz -2 ${projPath}/fastq/${histName}_R2.fastq.gz -S $projPath/alignment/sam/${histName}_bowtie2_spikeIn.sam &amp;&gt; $projPath/alignment/sam/bowtie2_summary/${histName}_bowtie2_spikeIn.txt
+
+seqDepthDouble=`samtools view -F 0x04 $projPath/alignment/sam/${histName}_bowtie2_spikeIn.sam | wc -l`
+seqDepth=$((seqDepthDouble/2))
+echo $seqDepth &gt;$projPath/alignment/sam/bowtie2_summary/${histName}_bowtie2_spikeIn.seqDepth</code></pre>
+
+<ul>
+  <li>对于 spike-in 归一化，读段比对到 E. coli 基因组 U00096.3，并额外使用 <code>--no-overlap</code> 和 <code>--no-dovetail</code> 两个参数（<code>--end-to-end --very-sensitive --no-overlap --no-dovetail --no-mixed --no-discordant --phred33 -I 10 -X 700</code>），以避免实验基因组与用于校准的残留 E. coli DNA 之间可能的交叉比对。</li>
+</ul>
+
+<h4>3.1.3 比对结果摘要 <span class="en">Alignment summary</span></h4>
+
+<p>更详细的参数说明请参阅 <a href="http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml">bowtie2 手册</a>。</p>
+
+<p>Bowtie2 比对结果摘要保存在 <code>${projPath}/alignment/sam/bowtie2_summary/${histName}_bowtie2.txt</code>，预期结果类似如下：</p>
+
+<pre><code>2984630 reads; of these:
+  2984630 (100.00%) were paired; of these:
+    125110 (4.19%) aligned concordantly 0 times
+    2360430 (79.09%) aligned concordantly exactly 1 time
+    499090 (16.72%) aligned concordantly &gt;1 times
+95.81% overall alignment rate</code></pre>
+
+<ul>
+  <li>2984630 是测序深度，即双端读段总数。</li>
+  <li>125110 是未能比对上的读段对数。</li>
+  <li>2360430 + 499090 是成功比对的读段对数。</li>
+  <li>95.81% 是总体比对率。</li>
+</ul>
+
+<h3>3.2 报告测序比对摘要（必需）<span class="en">Report sequencing mapping summary [required]</span></h3>
+
+<p>汇总原始读段和唯一比对的读段，以报告比对效率。高质量数据的比对率预期 &gt;80%。CUT&amp;Tag 数据通常背景非常低，因此即使只有 100 万条比对的片段，也足以对人类基因组中的一种组蛋白修饰给出稳健图谱。分析丰度较低的转录因子和染色质蛋白，下游分析可能需要 10 倍的比对片段数。</p>
+
+<p>我们可以评估以下指标：</p>
+<ul>
+  <li>测序深度</li>
+  <li>比对率</li>
+  <li>可比对片段数</li>
+  <li>重复率</li>
+  <li>唯一文库大小</li>
+  <li>片段大小分布</li>
+</ul>
+
+<h4>3.2.1 测序深度 <span class="en">Sequencing depth</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+<span class="co">## 项目路径和组蛋白列表</span>
+projPath = "/fh/fast/gottardo_r/yezheng_working/cuttag/CUTTag_tutorial"
+sampleList = c("K27me3_rep1", "K27me3_rep2", "K4me3_rep1", "K4me3_rep2", "IgG_rep1", "IgG_rep2")
+histList = c("K27me3", "K4me3", "IgG")
+
+<span class="co">## 从 bowtie2 比对摘要文件收集比对结果</span>
+alignResult = c()
+for(hist in sampleList){
+  alignRes = read.table(paste0(projPath, "/alignment/sam/bowtie2_summary/", hist, "_bowtie2.txt"), header = FALSE, fill = TRUE)
+  alignRate = substr(alignRes$V1[6], 1, nchar(as.character(alignRes$V1[6]))-1)
+  histInfo = strsplit(hist, "_")[[1]]
+  alignResult = data.frame(Histone = histInfo[1], Replicate = histInfo[2], 
+                           SequencingDepth = alignRes$V1[1] %&gt;% as.character %&gt;% as.numeric, 
+                           MappedFragNum_hg38 = alignRes$V1[4] %&gt;% as.character %&gt;% as.numeric + alignRes$V1[5] %&gt;% as.character %&gt;% as.numeric, 
+                           AlignmentRate_hg38 = alignRate %&gt;% as.numeric)  %&gt;% rbind(alignResult, .)
+}
+alignResult$Histone = factor(alignResult$Histone, levels = histList)
+alignResult %&gt;% mutate(AlignmentRate_hg38 = paste0(AlignmentRate_hg38, "%"))</code></pre>
+
+<h4>3.2.2 Spike-in 比对 <span class="en">Spike-in alignment</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+spikeAlign = c()
+for(hist in sampleList){
+  spikeRes = read.table(paste0(projPath, "/alignment/sam/bowtie2_summary/", hist, "_bowtie2_spikeIn.txt"), header = FALSE, fill = TRUE)
+  alignRate = substr(spikeRes$V1[6], 1, nchar(as.character(spikeRes$V1[6]))-1)
+  histInfo = strsplit(hist, "_")[[1]]
+  spikeAlign = data.frame(Histone = histInfo[1], Replicate = histInfo[2], 
+                          SequencingDepth = spikeRes$V1[1] %&gt;% as.character %&gt;% as.numeric, 
+                          MappedFragNum_spikeIn = spikeRes$V1[4] %&gt;% as.character %&gt;% as.numeric + spikeRes$V1[5] %&gt;% as.character %&gt;% as.numeric, 
+                          AlignmentRate_spikeIn = alignRate %&gt;% as.numeric)  %&gt;% rbind(spikeAlign, .)
+}
+spikeAlign$Histone = factor(spikeAlign$Histone, levels = histList)
+spikeAlign %&gt;% mutate(AlignmentRate_spikeIn = paste0(AlignmentRate_spikeIn, "%"))</code></pre>
+
+<h4>3.2.3 汇总 hg38 与 E.coli 的比对 <span class="en">Summarize the alignment to hg38 and E.coli</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+alignSummary = left_join(alignResult, spikeAlign, by = c("Histone", "Replicate", "SequencingDepth")) %&gt;%
+  mutate(AlignmentRate_hg38 = paste0(AlignmentRate_hg38, "%"), 
+         AlignmentRate_spikeIn = paste0(AlignmentRate_spikeIn, "%"))
+alignSummary</code></pre>
+
+<h4>3.2.4 可视化测序深度与比对结果 <span class="en">Visualizing the sequencing depth and alignment results</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+<span class="co">## 生成测序深度箱线图</span>
+fig3A = alignResult %&gt;% ggplot(aes(x = Histone, y = SequencingDepth/1000000, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("Sequencing Depth per Million") +
+    xlab("") + 
+    ggtitle("A. Sequencing Depth")
+
+fig3B = alignResult %&gt;% ggplot(aes(x = Histone, y = MappedFragNum_hg38/1000000, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("Mapped Fragments per Million") +
+    xlab("") +
+    ggtitle("B. Alignable Fragment (hg38)")
+
+fig3C = alignResult %&gt;% ggplot(aes(x = Histone, y = AlignmentRate_hg38, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("% of Mapped Fragments") +
+    xlab("") +
+    ggtitle("C. Alignment Rate (hg38)")
+
+fig3D = spikeAlign %&gt;% ggplot(aes(x = Histone, y = AlignmentRate_spikeIn, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("Spike-in Alignment Rate") +
+    xlab("") +
+    ggtitle("D. Alignment Rate (E.coli)")
+
+ggarrange(fig3A, fig3B, fig3C, fig3D, ncol = 2, nrow=2, common.legend = TRUE, legend="bottom")</code></pre>
+
+<img src="figure/index.Rmd/unnamed-chunk-12-1.png" alt="比对结果图">
+
+<p>在典型的 CUT&amp;Tag 实验中，以 65,000 个 K562 细胞中丰度较高的 H3K27me3 组蛋白修饰为目标时，E. coli 读段的比例约为 0.01% 到 10%。当细胞更少或表位丰度更低时，E. coli 读段可占总比对读段的多达 70%。对于 IgG 对照，E. coli 读段的比例通常远高于丰度较高的组蛋白修饰。</p>
+
+<h3>3.3 去除重复片段（可选/推荐）<span class="en">Remove duplicates [optional/required]</span></h3>
+
+<p>CUT&amp;Tag 将接头整合到抗体锚定 pA-Tn5 附近的 DNA 中，而整合的确切位点受周围 DNA 可及性的影响。因此，起始和结束位置完全相同的片段预期会普遍存在，这类「重复」可能并非 PCR 扩增造成的重复。实践中我们发现，高质量 CUT&amp;Tag 数据集的表观重复率很低，而且即使是表观「重复」的片段，也很可能是真实的片段。因此，我们<strong>不推荐</strong>去除重复。在材料量非常小、或怀疑存在 PCR 重复的实验中，可以去除重复。以下命令展示了如何使用 Picard 检查重复率。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+<span class="co">## 根据你加载 picard 的方式和服务器环境，picardCMD 可能不同，请相应调整。</span>
+picardCMD="java -jar picard.jar"
+mkdir -p $projPath/alignment/removeDuplicate/picard_summary
+
+<span class="co">## 按坐标排序</span>
+$picardCMD SortSam I=$projPath/alignment/sam/${histName}_bowtie2.sam O=$projPath/alignment/sam/${histName}_bowtie2.sorted.sam SORT_ORDER=coordinate
+
+<span class="co">## 标记重复</span>
+$picardCMD MarkDuplicates I=$projPath/alignment/sam/${histName}_bowtie2.sorted.sam O=$projPath/alignment/removeDuplicate/${histName}_bowtie2.sorted.dupMarked.sam METRICS_FILE=$projPath/alignment/removeDuplicate/picard_summary/${histName}_picard.dupMark.txt
+
+<span class="co">## 去除重复</span>
+$picardCMD MarkDuplicates I=$projPath/alignment/sam/${histName}_bowtie2.sorted.sam O=$projPath/alignment/removeDuplicate/${histName}_bowtie2.sorted.rmDup.sam REMOVE_DUPLICATES=true METRICS_FILE=$projPath/alignment/removeDuplicate/picard_summary/${histName}_picard.rmDup.txt</code></pre>
+
+<p>我们汇总表观重复率，并计算去除重复后的唯一文库大小。</p>
+
+<pre><code><span class="co">##=== R command ===##</span>
+<span class="co">## 从 picard 摘要输出汇总重复信息</span>
+dupResult = c()
+for(hist in sampleList){
+  dupRes = read.table(paste0(projPath, "/alignment/removeDuplicate/picard_summary/", hist, "_picard.rmDup.txt"), header = TRUE, fill = TRUE)
+  
+  histInfo = strsplit(hist, "_")[[1]]
+  dupResult = data.frame(Histone = histInfo[1], Replicate = histInfo[2], MappedFragNum_hg38 = dupRes$READ_PAIRS_EXAMINED[1] %&gt;% as.character %&gt;% as.numeric, DuplicationRate = dupRes$PERCENT_DUPLICATION[1] %&gt;% as.character %&gt;% as.numeric * 100, EstimatedLibrarySize = dupRes$ESTIMATED_LIBRARY_SIZE[1] %&gt;% as.character %&gt;% as.numeric) %&gt;% mutate(UniqueFragNum = MappedFragNum_hg38 * (1-DuplicationRate/100))  %&gt;% rbind(dupResult, .)
+}
+dupResult$Histone = factor(dupResult$Histone, levels = histList)
+alignDupSummary = left_join(alignSummary, dupResult, by = c("Histone", "Replicate", "MappedFragNum_hg38")) %&gt;% mutate(DuplicationRate = paste0(DuplicationRate, "%"))
+alignDupSummary</code></pre>
+
+<p>在这些示例数据集中，IgG 对照样品的重复率相对较高，因为该样品中的读段来自 CUT&amp;Tag 反应中的非特异性片段化。因此，在下游分析之前，从 IgG 数据集中去除重复是合适的。</p>
+
+<p>估计文库大小（estimated library size）是 Picard 基于双端重复计算的文库中唯一分子数的估计值。</p>
+
+<p>估计文库大小与目标表位的丰度以及所用抗体的质量成正比，而 IgG 样品的估计文库大小预期非常低。</p>
+
+<p>唯一片段数由 MappedFragNum_hg38 × (1 − DuplicationRate/100) 计算。</p>
+
+<pre><code><span class="co">##=== R command ===##</span>
+<span class="co">## 生成重复率的箱线图</span>
+fig4A = dupResult %&gt;% ggplot(aes(x = Histone, y = DuplicationRate, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("Duplication Rate (*100%)") +
+    xlab("") 
+
+fig4B = dupResult %&gt;% ggplot(aes(x = Histone, y = EstimatedLibrarySize, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("Estimated Library Size") +
+    xlab("") 
+
+fig4C = dupResult %&gt;% ggplot(aes(x = Histone, y = UniqueFragNum, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("# of Unique Fragments") +
+    xlab("")
+
+ggarrange(fig4A, fig4B, fig4C, ncol = 3, common.legend = TRUE, legend="bottom")</code></pre>
+
+<img src="figure/index.Rmd/unnamed-chunk-15-1.png" alt="重复率图">
+
+<h3>3.4 评估比对的片段大小分布（必需）<span class="en">Assess mapped fragment size distribution [Required]</span></h3>
+
+<p>CUT&amp;Tag 在锚定酶附近的染色质颗粒两侧整合接头，尽管染色质颗粒内部的片段化也可能发生。因此，以组蛋白修饰为目标的 CUT&amp;Tag 反应主要产生核小体长度（约 180 bp）或其倍数的片段。以转录因子为目标的 CUT&amp;Tag 主要产生核小体大小的片段，以及来自相邻核小体和因子结合位点的、数量不等的较短片段。核小体表面 DNA 的片段化也会发生，以单碱基分辨率绘制片段长度图会显示出 10-bp 的锯齿状周期性，这是 CUT&amp;Tag 实验成功的典型特征。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+mkdir -p $projPath/alignment/sam/fragmentLen
+
+<span class="co">## 从比对 sam 文件中提取第 9 列，即片段长度</span>
+samtools view -F 0x04 $projPath/alignment/sam/${histName}_bowtie2.sam | awk -F'\t' 'function abs(x){return ((x &lt; 0.0) ? -x : x)} {print abs($9)}' | sort | uniq -c | awk -v OFS="\t" '{print $2, $1/2}' &gt;$projPath/alignment/sam/fragmentLen/${histName}_fragmentLen.txt</code></pre>
+
+<pre><code><span class="co">##=== R command ===##</span>
+<span class="co">## 收集片段大小信息</span>
+fragLen = c()
+for(hist in sampleList){
+  
+  histInfo = strsplit(hist, "_")[[1]]
+  fragLen = read.table(paste0(projPath, "/alignment/sam/fragmentLen/", hist, "_fragmentLen.txt"), header = FALSE) %&gt;% mutate(fragLen = V1 %&gt;% as.numeric, fragCount = V2 %&gt;% as.numeric, Weight = as.numeric(V2)/sum(as.numeric(V2)), Histone = histInfo[1], Replicate = histInfo[2], sampleInfo = hist) %&gt;% rbind(fragLen, .) 
+}
+fragLen$sampleInfo = factor(fragLen$sampleInfo, levels = sampleList)
+fragLen$Histone = factor(fragLen$Histone, levels = histList)
+<span class="co">## 生成片段大小密度图（小提琴图）</span>
+fig5A = fragLen %&gt;% ggplot(aes(x = sampleInfo, y = fragLen, weight = Weight, fill = Histone)) +
+    geom_violin(bw = 5) +
+    scale_y_continuous(breaks = seq(0, 800, 50)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 20) +
+    ggpubr::rotate_x_text(angle = 20) +
+    ylab("Fragment Length") +
+    xlab("")
+
+fig5B = fragLen %&gt;% ggplot(aes(x = fragLen, y = fragCount, color = Histone, group = sampleInfo, linetype = Replicate)) +
+  geom_line(size = 1) +
+  scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma") +
+  theme_bw(base_size = 20) +
+  xlab("Fragment Length") +
+  ylab("Count") +
+  coord_cartesian(xlim = c(0, 500))
+
+ggarrange(fig5A, fig5B, ncol = 2)</code></pre>
+
+<img src="figure/index.Rmd/unnamed-chunk-17-1.png" alt="片段大小分布图">
+
+<p>较小的片段（50–100 bp）可能是由于锚定的 Tn5 既可以在核小体表面、也可以在连接区（linker regions）进行片段化，因此这些小片段可能并非背景。</p>
+
+<h3>3.5 评估重复间的可重复性 <span class="en">Assess replicate reproducibility</span></h3>
+
+<p>重复之间的数据可重复性通过全基因组比对读段计数的相关性分析来评估。为简化实现，我们将此分析推迟到第 IV 节之后，届时文件格式已转换为片段 bed 文件。</p>
+
+<h2>IV. 比对结果过滤与文件格式转换 <span class="en">Alignment results filtering and file format conversion</span></h2>
+
+<h3>4.1 按比对质量过滤（可选）<span class="en">Filtering mapped reads by the mapping quality filtering [optional]</span></h3>
+
+<p>某些项目可能需要对比对质量分数进行更严格的过滤。<a href="http://biofinysics.blogspot.com/2014/05/how-does-bowtie2-assign-mapq-scores.html">这篇博客</a>详细讨论了 bowtie 如何以实例分配质量分数。</p>
+
+<p>MAPQ(x) = −10 × log₁₀(P(x 比对错误)) = −10 × log₁₀(p)</p>
+
+<p>其取值范围为 0 到 37、40 或 42。</p>
+
+<p><code>samtools view -q minQualityScore</code> 将剔除所有低于用户定义 minQualityScore 的比对结果。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+minQualityScore=2
+samtools view -q $minQualityScore ${projPath}/alignment/sam/${histName}_bowtie2.sam &gt;${projPath}/alignment/sam/${histName}_bowtie2.qualityScore$minQualityScore.sam</code></pre>
+
+<ul>
+  <li>如果你确实执行了此过滤，请在后续步骤中将 <code>${histName}_bowtie2.sam</code> 替换为过滤后的 sam 文件 <code>${histName}_bowtie2.qualityScore$minQualityScore.sam</code>。</li>
+</ul>
+
+<h3>4.2 文件格式转换（必需）<span class="en">File format conversion [required]</span></h3>
+
+<p>本节是峰识别和可视化的<strong>必需</strong>准备步骤，其中需要进行一些过滤和文件格式转换。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+<span class="co">## 过滤并保留比对上的读段对</span>
+samtools view -bS -F 0x04 $projPath/alignment/sam/${histName}_bowtie2.sam &gt;$projPath/alignment/bam/${histName}_bowtie2.mapped.bam
+
+<span class="co">## 转换为 bed 文件格式</span>
+bedtools bamtobed -i $projPath/alignment/bam/${histName}_bowtie2.mapped.bam -bedpe &gt;$projPath/alignment/bed/${histName}_bowtie2.bed
+
+<span class="co">## 保留位于同一染色体且片段长度小于 1000 bp 的读段对</span>
+awk '$1==$4 &amp;&amp; $6-$2 &lt; 1000 {print $0}' $projPath/alignment/bed/${histName}_bowtie2.bed &gt;$projPath/alignment/bed/${histName}_bowtie2.clean.bed
+
+<span class="co">## 只提取与片段相关的列</span>
+cut -f 1,2,6 $projPath/alignment/bed/${histName}_bowtie2.clean.bed | sort -k1,1 -k2,2n -k3,3n  &gt;$projPath/alignment/bed/${histName}_bowtie2.fragments.bed</code></pre>
+
+<h3>4.3 评估重复间的可重复性（接 3.5 节）<span class="en">Assess replicate reproducibility (continue section 3.5)</span></h3>
+
+<p>为了研究重复之间以及不同条件之间的可重复性，将基因组划分为 500 bp 的区间（bin），并在重复数据集之间计算每个区间读段计数的 log2 变换值的 Pearson 相关系数。多个重复和 IgG 对照数据集以层次聚类的相关矩阵形式展示。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+<span class="co">## 使用每个片段的中点来推断该片段属于哪个 500bp 区间。</span>
+binLen=500
+awk -v w=$binLen '{print $1, int(($2 + $3)/(2*w))*w + w/2}' $projPath/alignment/bed/${histName}_bowtie2.fragments.bed | sort -k1,1V -k2,2n | uniq -c | awk -v OFS="\t" '{print $2, $3, $1}' |  sort -k1,1V -k2,2n  &gt;$projPath/alignment/bed/${histName}_bowtie2.fragmentsCount.bin$binLen.bed</code></pre>
+
+<pre><code><span class="co">##== R command ==##</span>
+reprod = c()
+fragCount = NULL
+for(hist in sampleList){
+  
+  if(is.null(fragCount)){
+    
+    fragCount = read.table(paste0(projPath, "/alignment/bed/", hist, "_bowtie2.fragmentsCount.bin500.bed"), header = FALSE) 
+    colnames(fragCount) = c("chrom", "bin", hist)
+  
+  }else{
+    
+    fragCountTmp = read.table(paste0(projPath, "/alignment/bed/", hist, "_bowtie2.fragmentsCount.bin500.bed"), header = FALSE)
+    colnames(fragCountTmp) = c("chrom", "bin", hist)
+    fragCount = full_join(fragCount, fragCountTmp, by = c("chrom", "bin"))
+    
+  }
+}
+
+M = cor(fragCount %&gt;% select(-c("chrom", "bin")) %&gt;% log2(), use = "complete.obs") 
+
+corrplot(M, method = "color", outline = T, addgrid.col = "darkgray", order="hclust", addrect = 3, rect.col = "black", rect.lwd = 3,cl.pos = "b", tl.col = "indianred4", tl.cex = 1, cl.cex = 1, addCoef.col = "black", number.digits = 2, number.cex = 1, col = colorRampPalette(c("midnightblue","white","darkred"))(100))</code></pre>
+
+<img src="figure/index.Rmd/unnamed-chunk-21-1.png" alt="重复相关性矩阵">
+
+<h2>V. Spike-in 校准 <span class="en">Spike-in calibration</span></h2>
+
+<p>本节为<strong>可选</strong>，但<strong>推荐</strong>（取决于你的实验方案）。我们已在第 3.1.2 节展示了比对到 spike-in 基因组，在第 3.2.2 节展示了 spike-in 比对摘要。</p>
+
+<p>其基本假设是：对于使用相同细胞数量的一系列样品，比对到主基因组与比对到 E. coli 基因组的片段比例是相同的。基于此假设，我们<strong>不</strong>在实验之间、或不同批次的纯化 pATn5 之间进行归一化（这些批次可能带有差异很大的残留 E. coli DNA）。为避免归一化数据中出现过小的分数，使用常数 C，定义缩放因子 S 为：</p>
+
+<p><code>S = C /（比对到 E. coli 基因组的片段数）</code></p>
+
+<p>归一化覆盖度计算为：</p>
+
+<p><code>归一化覆盖度 =（主基因组覆盖度）× S</code></p>
+
+<p>常数 C 是任意乘数，通常取 10,000。得到的文件作为基因组覆盖度 bedgraph 文件，相对较小。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+if [[ "$seqDepth" -gt "1" ]]; then
+    
+    mkdir -p $projPath/alignment/bedgraph
+
+    scale_factor=`echo "10000 / $seqDepth" | bc -l`
+    echo "Scaling factor for $histName is: $scale_factor!"
+    bedtools genomecov -bg -scale $scale_factor -i $projPath/alignment/bed/${histName}_bowtie2.fragments.bed -g $chromSize &gt; $projPath/alignment/bedgraph/${histName}_bowtie2.fragments.normalized.bedgraph
+    
+fi</code></pre>
+
+<h3>5.1 缩放因子 <span class="en">Scaling factor</span></h3>
+
+<pre><code><span class="co">##=== R command ===##</span>
+scaleFactor = c()
+multiplier = 10000
+for(hist in sampleList){
+  spikeDepth = read.table(paste0(projPath, "/alignment/sam/bowtie2_summary/", hist, "_bowtie2_spikeIn.seqDepth"), header = FALSE, fill = TRUE)$V1[1]
+  
+  histInfo = strsplit(hist, "_")[[1]]
+  scaleFactor = data.frame(scaleFactor = multiplier/spikeDepth, Histone = histInfo[1], Replicate = histInfo[2])  %&gt;% rbind(scaleFactor, .)
+}
+scaleFactor$Histone = factor(scaleFactor$Histone, levels = histList)
+left_join(alignDupSummary, scaleFactor, by = c("Histone", "Replicate"))</code></pre>
+
+<pre><code><span class="co">##=== R command ===##</span>
+<span class="co">## 生成测序深度箱线图</span>
+fig6A = scaleFactor %&gt;% ggplot(aes(x = Histone, y = scaleFactor, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 20) +
+    ylab("Spike-in Scalling Factor") +
+    xlab("")
+
+normDepth = inner_join(scaleFactor, alignResult, by = c("Histone", "Replicate")) %&gt;% mutate(normDepth = MappedFragNum_hg38 * scaleFactor)
+
+fig6B = normDepth %&gt;% ggplot(aes(x = Histone, y = normDepth, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.9, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 20) +
+    ylab("Normalization Fragment Count") +
+    xlab("") + 
+    coord_cartesian(ylim = c(1000000, 130000000))
+ggarrange(fig6A, fig6B, ncol = 2, common.legend = TRUE, legend="bottom")</code></pre>
+
+<img src="figure/index.Rmd/unnamed-chunk-24-1.png" alt="spike-in 缩放因子图">
+
+<h2>VI. 峰识别（Peak calling）<span class="en">Peak calling</span></h2>
+
+<h3>6.1 SEACR</h3>
+
+<p>面向 CUT&amp;RUN 的稀疏富集分析包 <a href="https://github.com/FredHutch/SEACR/">SEACR</a> 专为在极低背景（即无读段覆盖的区域）的染色质分析数据中识别峰和富集区域而设计，这正是 CUT&amp;Tag 染色质分析实验的典型特征。SEACR 要求以双端测序的 bedGraph 文件作为输入，并将峰定义为不与 IgG 对照数据集中划定的背景信号区块重叠的、连续碱基覆盖区块。SEACR 既能有效识别因子结合位点的窄峰，也能识别某些组蛋白修饰特有的宽结构域。该方法已发表于 <a href="https://epigeneticsandchromatin.biomedcentral.com/articles/10.1186/s13072-019-0287-4">Meers et al. 2019</a>，用户手册见 <a href="https://github.com/FredHutch/SEACR/">github</a>。由于我们已用 E. coli 读段计数归一化了片段计数，因此将 SEACR 的归一化选项设为「non」。否则推荐使用「norm」。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+seacr="/fh/fast/gottardo_r/yezheng_working/Software/SEACR/SEACR_1.3.sh"
+histControl=$2
+mkdir -p $projPath/peakCalling/SEACR
+
+bash $seacr $projPath/alignment/bedgraph/${histName}_bowtie2.fragments.normalized.bedgraph \
+     $projPath/alignment/bedgraph/${histControl}_bowtie2.fragments.normalized.bedgraph \
+     non stringent $projPath/peakCalling/SEACR/${histName}_seacr_control.peaks
+
+bash $seacr $projPath/alignment/bedgraph/${histName}_bowtie2.fragments.normalized.bedgraph 0.01 non stringent $projPath/peakCalling/SEACR/${histName}_seacr_top0.01.peaks</code></pre>
+
+<h4>6.1.1 识别的峰数量 <span class="en">Number of peaks called</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+peakN = c()
+peakWidth = c()
+peakType = c("control", "top0.01")
+for(hist in sampleList){
+  histInfo = strsplit(hist, "_")[[1]]
+  if(histInfo[1] != "IgG"){
+    for(type in peakType){
+      peakInfo = read.table(paste0(projPath, "/peakCalling/SEACR/", hist, "_seacr_", type, ".peaks.stringent.bed"), header = FALSE, fill = TRUE)  %&gt;% mutate(width = abs(V3-V2))
+      peakN = data.frame(peakN = nrow(peakInfo), peakType = type, Histone = histInfo[1], Replicate = histInfo[2]) %&gt;% rbind(peakN, .)
+      peakWidth = data.frame(width = peakInfo$width, peakType = type, Histone = histInfo[1], Replicate = histInfo[2])  %&gt;% rbind(peakWidth, .)
+    }
+  }
+}
+peakN %&gt;% select(Histone, Replicate, peakType, peakN)</code></pre>
+
+<h4>6.1.2 峰在生物学重复间的可重复性 <span class="en">Reproducibility of the peak across biological replicates</span></h4>
+
+<p>比较各重复数据集的峰识别结果，以定义可重复的峰。每个区块中按总信号排名前 1% 的峰被选为高置信度位点。</p>
+
+<pre><code><span class="co">##=== R command ===##</span>
+histL = c("K27me3", "K4me3")
+repL = paste0("rep", 1:2)
+peakType = c("control", "top0.01")
+peakOverlap = c()
+for(type in peakType){
+  for(hist in histL){
+    overlap.gr = GRanges()
+    for(rep in repL){
+      peakInfo = read.table(paste0(projPath, "/peakCalling/SEACR/", hist, "_", rep, "_seacr_", type, ".peaks.stringent.bed"), header = FALSE, fill = TRUE)
+      peakInfo.gr = GRanges(peakInfo$V1, IRanges(start = peakInfo$V2, end = peakInfo$V3), strand = "*")
+      if(length(overlap.gr) &gt;0){
+        overlap.gr = overlap.gr[findOverlaps(overlap.gr, peakInfo.gr)@from]
+      }else{
+        overlap.gr = peakInfo.gr
+        
+      }
+    }
+    peakOverlap = data.frame(peakReprod = length(overlap.gr), Histone = hist, peakType = type) %&gt;% rbind(peakOverlap, .)
+  }
+}
+
+peakReprod = left_join(peakN, peakOverlap, by = c("Histone", "peakType")) %&gt;% mutate(peakReprodRate = peakReprod/peakN * 100)
+peakReprod %&gt;% select(Histone, Replicate, peakType, peakN, peakReprodNum = peakReprod, peakReprodRate)</code></pre>
+
+<p>可重复性按如下计算：</p>
+
+<p><code># rep1 和 rep2 重叠的峰数 / rep1 或 rep2 的峰数 × 100</code></p>
+
+<p>因此，它对每个重复中识别的峰总数很敏感。</p>
+
+<h4>6.1.3 峰区域内的片段占比（FRiP）<span class="en">FRagment proportion in Peaks regions (FRiPs)</span></h4>
+
+<p>我们计算峰内读段比例（FRiP）作为信噪比的度量，并与 IgG 对照数据集中的 FRiP 进行对比以作说明。尽管 CUT&amp;Tag 的测序深度通常只有 100–500 万读段，但该方法低背景的特点带来了较高的 FRiP 分数。</p>
+
+<pre><code><span class="co">##=== R command ===##</span>
+library(chromVAR)
+
+bamDir = paste0(projPath, "/alignment/bam")
+inPeakData = c()
+<span class="co">## 与 bam 文件重叠以获取计数</span>
+for(hist in histL){
+  for(rep in repL){
+    peakRes = read.table(paste0(projPath, "/peakCalling/SEACR/", hist, "_", rep, "_seacr_control.peaks.stringent.bed"), header = FALSE, fill = TRUE)
+    peak.gr = GRanges(seqnames = peakRes$V1, IRanges(start = peakRes$V2, end = peakRes$V3), strand = "*")
+    bamFile = paste0(bamDir, "/", hist, "_", rep, "_bowtie2.mapped.bam")
+    fragment_counts &lt;- getCounts(bamFile, peak.gr, paired = TRUE, by_rg = FALSE, format = "bam")
+    inPeakN = counts(fragment_counts)[,1] %&gt;% sum
+    inPeakData = rbind(inPeakData, data.frame(inPeakN = inPeakN, Histone = hist, Replicate = rep))
+  }
+}
+
+frip = left_join(inPeakData, alignResult, by = c("Histone", "Replicate")) %&gt;% mutate(frip = inPeakN/MappedFragNum_hg38 * 100)
+frip %&gt;% select(Histone, Replicate, SequencingDepth, MappedFragNum_hg38, AlignmentRate_hg38, FragInPeakNum = inPeakN, FRiPs = frip)</code></pre>
+
+<h4>6.1.4 峰数量、峰宽、峰可重复性与 FRiP 的可视化</h4>
+
+<pre><code>fig7A = peakN %&gt;% ggplot(aes(x = Histone, y = peakN, fill = Histone)) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    facet_grid(~peakType) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.55, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("Number of Peaks") +
+    xlab("")
+
+fig7B = peakWidth %&gt;% ggplot(aes(x = Histone, y = width, fill = Histone)) +
+    geom_violin() +
+    facet_grid(Replicate~peakType) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.55, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    scale_y_continuous(trans = "log", breaks = c(400, 3000, 22000)) +
+    theme_bw(base_size = 18) +
+    ylab("Width of Peaks") +
+    xlab("")
+
+fig7C = peakReprod %&gt;% ggplot(aes(x = Histone, y = peakReprodRate, fill = Histone, label = round(peakReprodRate, 2))) +
+    geom_bar(stat = "identity") +
+    geom_text(vjust = 0.1) +
+    facet_grid(Replicate~peakType) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.55, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("% of Peaks Reproduced") +
+    xlab("")
+
+fig7D = frip %&gt;% ggplot(aes(x = Histone, y = frip, fill = Histone, label = round(frip, 2))) +
+    geom_boxplot() +
+    geom_jitter(aes(color = Replicate), position = position_jitter(0.15)) +
+    scale_fill_viridis(discrete = TRUE, begin = 0.1, end = 0.55, option = "magma", alpha = 0.8) +
+    scale_color_viridis(discrete = TRUE, begin = 0.1, end = 0.9) +
+    theme_bw(base_size = 18) +
+    ylab("% of Fragments in Peaks") +
+    xlab("")
+
+ggarrange(fig7A, fig7B, fig7C, fig7D, ncol = 2, nrow=2, common.legend = TRUE, legend="bottom")</code></pre>
+
+<img src="figure/index.Rmd/unnamed-chunk-29-1.png" alt="峰统计图">
+
+<h2>VII. 可视化 <span class="en">Visualization</span></h2>
+
+<p>通常我们希望用基因组浏览器来可视化某个区域的染色质景观。<a href="http://software.broadinstitute.org/software/igv/home">Integrative Genomic Viewer (IGV)</a> 提供易于使用的网页版和本地桌面版。<a href="https://genome.ucsc.edu/">UCSC Genome Browser</a> 提供最全面的补充基因组信息。</p>
+
+<h3>7.1 归一化 bedgraph 文件的浏览器展示 <span class="en">Browser display of normalized bedgraph files</span></h3>
+
+<img src="figures/chr7.png" alt="图5">
+<p class="figcap"><strong>图 5. chr7:131,000,000–134,000,000 区域的 IGV Web 可视化。</strong></p>
+
+<h3>7.2 特定区域的热图可视化 <span class="en">Heatmap visualization on specific regions</span></h3>
+
+<p>我们还希望查看一组注释位点处的染色质特征，例如基因启动子处的组蛋白修饰信号。我们将使用 <a href="https://deeptools.readthedocs.io/en/develop/">deepTools</a> 的 <code>computeMatrix</code> 和 <code>plotHeatmap</code> 函数来生成热图。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+mkdir -p $projPath/alignment/bigwig                                                                                                                                        
+samtools sort -o $projPath/alignment/bam/${histName}.sorted.bam $projPath/alignment/bam/${histName}_bowtie2.mapped.bam                                                     
+samtools index $projPath/alignment/bam/${histName}.sorted.bam                                                                                                              
+bamCoverage -b $projPath/alignment/bam/${histName}.sorted.bam -o $projPath/alignment/bigwig/${histName}_raw.bw                                                             </code></pre>
+
+<h4>7.2.1 转录单位上的热图 <span class="en">Heatmap over transcription units</span></h4>
+
+<pre><code><span class="co">##== linux command ==##</span>
+cores=8
+computeMatrix scale-regions -S $projPath/alignment/bigwig/K27me3_rep1_raw.bw \
+                               $projPath/alignment/bigwig/K27me3_rep2_raw.bw \
+                               $projPath/alignment/bigwig/K4me3_rep1_raw.bw \
+                               $projPath/alignment/bigwig/K4me3_rep2_raw.bw \
+                              -R $projPath/data/hg38_gene/hg38_gene.tsv \
+                              --beforeRegionStartLength 3000 \
+                              --regionBodyLength 5000 \
+                              --afterRegionStartLength 3000 \
+                              --skipZeros -o $projPath/data/hg38_gene/matrix_gene.mat.gz -p $cores
+
+plotHeatmap -m $projPath/data/hg38_gene/matrix_gene.mat.gz -out $projPath/data/hg38_gene/Histone_gene.png --sortUsing sum</code></pre>
+
+<img src="figures/Histone_gene.png" alt="图6">
+<p class="figcap"><strong>图 6. 基因周围组蛋白富集的热图。</strong></p>
+
+<h4>7.2.2 CUT&amp;Tag 峰上的热图 <span class="en">Heatmap on CUT&amp;Tag peaks</span></h4>
+
+<p>我们使用 SEACR 返回的信号区块中点来在热图中对齐信号。SEACR 输出的第六列是形如 chr:start-end 的条目，表示该区域中信号最大的区域的起始和结束碱基。我们先生成一个在第 6 列包含此中点信息的新 bed 文件，再用 deeptools 进行热图可视化。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+awk '{split($6, summit, ":"); split(summit[2], region, "-"); print summit[1]"\t"region[1]"\t"region[2]}' $projPath/peakCalling/SEACR/${histName}_${repName}_seacr_control.peaks.stringent.bed &gt;$projPath/peakCalling/SEACR/${histName}_${repName}_seacr_control.peaks.summitRegion.bed
+
+computeMatrix reference-point -S $projPath/alignment/bigwig/${histName}_${repName}_raw.bw \
+              -R $projPath/peakCalling/SEACR/${histName}_${repName}_seacr_control.peaks.summitRegion.bed \
+              --skipZeros -o $projPath/peakCalling/SEACR/${histName}_${repName}_SEACR.mat.gz -p $cores -a 3000 -b 3000 --referencePoint center
+
+plotHeatmap -m $projPath/peakCalling/SEACR/${histName}_SEACR.mat.gz -out $projPath/peakCalling/SEACR/${histName}_SEACR_heatmap.png --sortUsing sum --startLabel "Peak Start" --endLabel "Peak End" --xAxisLabel "" --regionsLabel "Peaks" --samplesLabel "${histName} ${repName}"</code></pre>
+
+<img src="figures/Histone_peak.png" alt="图7">
+<p class="figcap"><strong>图 7. 峰内组蛋白富集的热图。</strong></p>
+
+<h2>VIII. 差异分析 <span class="en">Differential analysis</span></h2>
+
+<p><a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0550-8">DESeq2：用 DESeq2 对 RNA-seq 数据进行折叠变化和离散度的调节估计</a></p>
+
+<p>估计高通量测序分析得到的计数数据中方差-均值的依赖关系，并基于负二项分布模型检验差异表达。</p>
+
+<h3>8.1 创建 峰 × 样品 矩阵 <span class="en">Create the peak x sample matrix</span></h3>
+
+<p>通常，差异检验比较同一组蛋白修饰的两个或多个条件。本教程受示例数据所限，我们将通过比较 H3K27me3 的两个重复和 H3K4me3 的两个重复来说明差异检测。我们将使用 DESeq2（<a href="http://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts">完整教程</a>）作为示例。</p>
+
+<h4>8.1.1 合并每个样品识别出的所有峰，创建主峰列表 <span class="en">Create a master peak list merging all the peaks called for each sample</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+mPeak = GRanges()
+<span class="co">## 与 bam 文件重叠以获取计数</span>
+for(hist in histL){
+  for(rep in repL){
+    peakRes = read.table(paste0(projPath, "/peakCalling/SEACR/", hist, "_", rep, "_seacr_control.peaks.stringent.bed"), header = FALSE, fill = TRUE)
+    mPeak = GRanges(seqnames = peakRes$V1, IRanges(start = peakRes$V2, end = peakRes$V3), strand = "*") %&gt;% append(mPeak, .)
+  }
+}
+masterPeak = reduce(mPeak)</code></pre>
+
+<h4>8.1.2 获取主峰列表中每个峰的片段计数 <span class="en">Get the fragment counts for each peak in the master peak list</span></h4>
+
+<pre><code><span class="co">##=== R command ===##</span>
+library(DESeq2)
+bamDir = paste0(projPath, "/alignment/bam")
+countMat = matrix(NA, length(masterPeak), length(histL)*length(repL))
+<span class="co">## 与 bam 文件重叠以获取计数</span>
+i = 1
+for(hist in histL){
+  for(rep in repL){
+    
+    bamFile = paste0(bamDir, "/", hist, "_", rep, "_bowtie2.mapped.bam")
+    fragment_counts &lt;- getCounts(bamFile, masterPeak, paired = TRUE, by_rg = FALSE, format = "bam")
+    countMat[, i] = counts(fragment_counts)[,1]
+    i = i + 1
+  }
+}
+colnames(countMat) = paste(rep(histL, 2), rep(repL, each = 2), sep = "_")</code></pre>
+
+<h3>8.2 测序深度归一化与差异富集峰检测 <span class="en">Sequencing depth normalization and differential enriched peaks detection</span></h3>
+
+<pre><code><span class="co">##=== R command ===##</span>
+selectR = which(rowSums(countMat) &gt; 5) <span class="co">## 去除低计数基因</span>
+dataS = countMat[selectR,]
+condition = factor(rep(histL, each = length(repL)))
+dds = DESeqDataSetFromMatrix(countData = dataS,
+                              colData = DataFrame(condition),
+                              design = ~ condition)
+DDS = DESeq(dds)
+normDDS = counts(DDS, normalized = TRUE) <span class="co">## 相对于测序深度归一化</span>
+colnames(normDDS) = paste0(colnames(normDDS), "_norm")
+res = results(DDS, independentFiltering = FALSE, altHypothesis = "greaterAbs")
+
+countMatDiff = cbind(dataS, normDDS, res)
+head(countMatDiff)</code></pre>
+
+<pre><code>DataFrame with 6 rows and 14 columns
+  K27me3_rep1 K4me3_rep1 K27me3_rep2 K4me3_rep2 K27me3_rep1_norm
+    &lt;numeric&gt;  &lt;numeric&gt;   &lt;numeric&gt;  &lt;numeric&gt;        &lt;numeric&gt;
+1           6          2           1          6         1.408657
+2           1          0         242        182         0.234776
+3           0          0         176         88         0.000000
+4           0          0         274        194         0.000000
+5           3          4           0          1         0.704328
+6           0          1         109         59         0.000000
+  K4me3_rep1_norm K27me3_rep2_norm K4me3_rep2_norm  baseMean log2FoldChange
+        &lt;numeric&gt;        &lt;numeric&gt;       &lt;numeric&gt; &lt;numeric&gt;      &lt;numeric&gt;
+1        0.620403            4.170         18.2724   6.11787       3.496854
+2        0.000000         1009.141        554.2634 390.90978      12.510325
+3        0.000000          733.921        267.9955 250.47905      13.297304
+4        0.000000         1142.581        590.8082 433.34733      14.089840
+5        1.240806            0.000          3.0454   1.24763       0.846266
+6        0.310202          454.530        179.6788 158.62986      11.189689
+      lfcSE      stat      pvalue        padj
+  &lt;numeric&gt; &lt;numeric&gt;   &lt;numeric&gt;   &lt;numeric&gt;
+1   1.19893  2.916635 3.53829e-03 4.22134e-02
+2   1.50039  8.338074 7.55102e-17 2.18197e-15
+3   1.58547  8.386969 4.98837e-17 1.50548e-15
+4   1.55196  9.078730 1.09850e-19 6.73560e-18
+5   2.18326  0.387617 6.98300e-01 9.72755e-01
+6   1.53046  7.311313 2.64545e-13 4.33546e-12</code></pre>
+
+<p>DESeq2 要求输入矩阵应为未归一化的计数或测序读段的估计计数。</p>
+
+<p>DESeq2 模型在内部校正文库大小。</p>
+
+<p><code>countMatDiff</code> 汇总了差异分析结果：</p>
+
+<ul>
+  <li>前 4 列：过滤掉低计数峰区域后的原始读段计数；</li>
+  <li>接下来 4 列：消除文库大小差异后的归一化读段计数；</li>
+  <li>其余列：差异检测结果。</li>
+</ul>
+
+<h2>参考文献 <span class="en">References</span></h2>
+
+<p>Kaya-Okur HS, Wu SJ, Codomo CA, Pledger ES, Bryson TD, Henikoff JG, Ahmad K, Henikoff S: CUT&amp;Tag for efficient epigenomic profiling of small samples and single cells. Nature Communications 2019 10:1930 (PMID:31036827).</p>
+
+<p>Meers, M.P., Tenenbaum, D. &amp; Henikoff, S. Peak calling by Sparse Enrichment Analysis for CUT&amp;RUN chromatin profiling. Epigenetics &amp; Chromatin 12, 42 (2019). https://doi.org/10.1186/s13072-019-0287-4</p>
+
+<p><strong>引用本教程：</strong>Zheng Y et al (2020). Protocol.io</p>
+
+<h2>IX. 其他替代方案 <span class="en">Additional Alternatives</span></h2>
+
+<h3>9.1 ChIPseqSpikeInFree：无 spike-in DNA 时归一化数据（可选）</h3>
+
+<p><a href="https://github.com/stjude/ChIPseqSpikeInFree">ChIPseqSpikeInFree</a> 是一种新颖的 ChIP-seq 归一化方法，无需依赖外源 spike-in 染色质或峰检测，即可有效确定跨各种条件和处理的样品的缩放因子，从而揭示组蛋白修饰占位的全局变化。安装详情见其 github。</p>
+
+<ul>
+  <li>ChIPseqSpikeInFree 输出的解读</li>
+  <li>如何使用 ChIPseqSpikeInFree 缩放因子</li>
+</ul>
+
+<h3>9.2 其他峰识别方法 <span class="en">Other peak calling methods</span></h3>
+
+<p><a href="https://github.com/macs3-project/MACS">MACS2</a>：基于模型的 ChIP-Seq 分析（MACS）。安装详情见<a href="https://github.com/macs3-project/MACS">此处</a>。</p>
+
+<pre><code><span class="co">##== linux command ==##</span>
+histName="K27me3"
+controlName="IgG"
+
+mkdir -p $projPath/peakCalling
+macs2 callpeak -t ${projPath}/alignment/bam/${histName}_rep1_bowtie2.mapped.bam \
+      -c ${projPath}/alignment/bam/${controlName}_rep1_bowtie2.mapped.bam \
+      -g hs -f BAMPE -n macs2_peak_q0.1 --outdir $projPath/peakCalling/MACS2 -q 0.1 --keep-dup all 2&gt;${projPath}/peakCalling/MACS2/macs2Peak_summary.txt</code></pre>
+
+<p><strong>dPeak</strong>：高分辨率识别 PET 和 SET ChIP-Seq 数据中的转录因子结合位点。</p>
+
+<p><strong>MOSAiCS</strong>：用于 ChIP-Seq 数据分析的统计框架。</p>
+
+<h3>9.3 其他用于结合位点差异分析的包 <span class="en">Other packages for differential analysis of binding sites</span></h3>
+
+<p><strong>Limma</strong>：limma 为 RNA-seq 和微阵列研究提供差异表达分析能力。Limma 是用于分析基因表达微阵列数据的 R 包，尤其使用线性模型分析设计实验并评估差异表达。Limma 能够在任意复杂的实验设计中同时分析多个 RNA 靶标之间的比较。经验贝叶斯方法即使在阵列数量很少时也能提供稳定结果。Limma 可扩展到研究峰区域内的差异片段富集分析。值得注意的是，limma 既能处理固定效应模型，也能处理随机效应模型。</p>
+
+<p><strong>edgeR</strong>：考虑生物学变异的多因素 RNA-seq 实验差异表达分析。edgeR 对有生物学重复的 RNA-seq 表达谱进行差异表达分析，实现了一系列基于负二项分布的统计方法，包括经验贝叶斯估计、精确检验、广义线性模型和拟似然检验。除 RNA-seq 外，它还可应用于其他产生读段计数的基因组数据的差异信号分析，包括 ChIP-seq、ATAC-seq、Bisulfite-seq、SAGE 和 CAGE。edgeR 可以处理多因素问题。</p>
+
+<h2>X. 排障：生成你自己的数据 <span class="en">Troubleshooting: Generating your data</span></h2>
+
+<p>此工作流可以用于你自己的数据，并会生成一套标准化的质量控制报告。然而，许多测序机构并不执行 25×25 双端测序，这里提供了修剪和比对的替代参数。针对你的材料进行的非特异性抗体（IgG）分析或 ATAC-seq 分析的对照数据集，也可用于此处详述的可选分析。</p>
+
+<p>用 300 mM NaCl 严格洗涤对于限制 Tn5 对暴露 DNA 的亲和力至关重要。我们在此描述了控制背景 Tn5 亲和力的必要性，以及我们的 CUT&amp;Tag 方案如何有效抑制这种假象，从而实现对染色质表位的清晰定位。我们介绍了一种可处理天然或固定细胞核的方案，并包含 DNA 分离的替代方法。为说明该方法，我们描述了一个典型实验，包括使用新的峰识别信息指标来评估结果。此外，我们验证了 CUT&amp;Tag 的单管形式，该形式无需 DNA 分离，而是直接用片段化材料进行文库扩增。我们根据自身经验记录了 CUT&amp;Tag 方案的关键步骤，以帮助用户在自己的研究中建立该方法。</p>
+
+<h2>会话信息 <span class="en">Session information</span></h2>
+
+<pre><code>sessionInfo()
+
+R version 4.0.2 (2020-06-22)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 18.04.5 LTS
+
+Matrix products: default
+BLAS/LAPACK: /app/software/OpenBLAS/0.3.7-GCC-8.3.0/lib/libopenblas_haswellp-r0.3.7.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] corrplot_0.84               ggpubr_0.4.0               
+ [3] DESeq2_1.28.1               SummarizedExperiment_1.18.2
+ [5] DelayedArray_0.14.1         matrixStats_0.57.0         
+ [7] Biobase_2.48.0              chromVAR_1.10.0            
+ [9] GenomicRanges_1.40.0        GenomeInfoDb_1.24.2        
+[11] IRanges_2.22.2              S4Vectors_0.26.1           
+[13] BiocGenerics_0.34.0         viridis_0.5.1              
+[15] viridisLite_0.3.0           ggplot2_3.3.2              
+[17] stringr_1.4.0               dplyr_1.0.2                
+[19] workflowr_1.6.2            
+
+loaded via a namespace (and not attached):
+  [1] colorspace_1.4-1            ggsignif_0.6.0             
+  [3] rio_0.5.16                  ellipsis_0.3.1             
+  [5] rprojroot_2.0.2             XVector_0.28.0             
+  [7] fs_1.4.2                    rstudioapi_0.11            
+  [9] farver_2.0.3                DT_0.16                    
+ [11] bit64_4.0.5                 AnnotationDbi_1.50.3       
+ [13] splines_4.0.2               R.methodsS3_1.8.0          
+ [15] geneplotter_1.66.0          knitr_1.29                 
+ [17] jsonlite_1.7.2              Cairo_1.5-12               
+ [19] Rsamtools_2.4.0             seqLogo_1.54.3             
+ [21] broom_0.5.6                 annotate_1.66.0            
+ [23] GO.db_3.11.4                png_0.1-7                  
+ [25] R.oo_1.23.0                 shiny_1.5.0                
+ [27] readr_1.3.1                 compiler_4.0.2             
+ [29] httr_1.4.2                  backports_1.2.1            
+ [31] Matrix_1.2-18               fastmap_1.0.1              
+ [33] lazyeval_0.2.2              later_1.1.0.1              
+ [35] htmltools_0.5.0             tools_4.0.2                
+ [37] gtable_0.3.0                glue_1.4.2                 
+ [39] TFMPvalue_0.0.8             GenomeInfoDbData_1.2.3     
+ [41] reshape2_1.4.4              Rcpp_1.0.5                 
+ [43] carData_3.0-4               cellranger_1.1.0           
+ [45] vctrs_0.3.5                 Biostrings_2.56.0          
+ [47] nlme_3.1-148                rtracklayer_1.48.0         
+ [49] xfun_0.15                   CNEr_1.24.0                
+ [51] openxlsx_4.1.5              mime_0.9                   
+ [53] miniUI_0.1.1.1              lifecycle_0.2.0            
+ [55] poweRlaw_0.70.6             gtools_3.8.2               
+ [57] rstatix_0.6.0               XML_3.99-0.5               
+ [59] zlibbioc_1.34.0             scales_1.1.1               
+ [61] BSgenome_1.56.0             hms_0.5.3                  
+ [63] promises_1.1.1              RColorBrewer_1.1-2         
+ [65] curl_4.3                    yaml_2.2.1                 
+ [67] memoise_1.1.0               gridExtra_2.3              
+ [69] stringi_1.5.3               RSQLite_2.2.0              
+ [71] highr_0.8                   genefilter_1.70.0          
+ [73] caTools_1.18.0              zip_2.0.4                  
+ [75] BiocParallel_1.22.0         rlang_0.4.9                
+ [77] pkgconfig_2.0.3             bitops_1.0-6               
+ [79] pracma_2.2.9                evaluate_0.14              
+ [81] lattice_0.20-41             purrr_0.3.4                
+ [83] labeling_0.4.2              GenomicAlignments_1.24.0   
+ [85] htmlwidgets_1.5.3           cowplot_1.1.0              
+ [87] bit_4.0.4                   tidyselect_1.1.0           
+ [89] plyr_1.8.6                  magrittr_1.5               
+ [91] R6_2.5.0                    generics_0.0.2             
+ [93] DBI_1.1.0                   haven_2.3.1                
+ [95] foreign_0.8-80              pillar_1.4.7               
+ [97] whisker_0.4                 withr_2.3.0                
+ [99] abind_1.4-5                 survival_3.2-3             
+[101] KEGGREST_1.28.0             RCurl_1.98-1.2             
+[103] tibble_3.0.4                car_3.0-8                  
+[105] crayon_1.3.4                plotly_4.9.2.1             
+[107] rmarkdown_2.3               TFBSTools_1.26.0           
+[109] readxl_1.3.1                locfit_1.5-9.4             
+[111] grid_4.0.2                  data.table_1.13.4          
+[113] blob_1.2.1                  git2r_0.27.1               
+[115] forcats_0.5.0               digest_0.6.27              
+[117] xtable_1.8-4                tidyr_1.1.2                
+[119] httpuv_1.5.4                R.utils_2.9.2              
+[121] munsell_0.5.0               DirichletMultinomial_1.30.0</code></pre>
+
+<hr>
+<p class="meta">本页面为 <a href="https://yezhengstat.github.io/CUTTag_tutorial/">CUT&amp;Tag Data Processing and Analysis Tutorial</a> 的完整中文翻译。所有代码、命令、函数名、参数名与输出均保持原样，仅翻译说明文字。</p>
+
+</body>
+</html>
